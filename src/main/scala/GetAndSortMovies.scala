@@ -29,15 +29,19 @@ object GetAndSortMovies {
       .fold(
         println(s"Missing parameter: movieName")
       )(
-        movieName => {
+        movies => {
+
+          val movieName = args.mkString(" ")
 
           val movieInfo = request(movieName, 1).flatMap { initialResult =>
-            val pages = Seq.range(2, initialResult.totalResults.toInt / 10)
+            val totalPages = initialResult.totalResults.toInt / 10
+            val resultsStart = if (totalPages == 0) 0 else 2
+            val pages = Seq.range(resultsStart, totalPages)
             Future.sequence(pages.map(request(movieName, _))
               ++ Seq(Future.successful(initialResult)))
           }
 
-          val result = Await.result(movieInfo, 20.second)
+          val result = Await.result(movieInfo, 5.minutes)
             .flatMap(search => {
               wsClient.close
               search.Search
@@ -60,6 +64,8 @@ object GetAndSortMovies {
       .withQueryString("s" -> movieName, "type" -> ResultType, "page" -> page.toString)
       .withHeaders("Cache-Control" -> "no-cache")
       .get()
-      .map (_.json.as[SearchResult])
+      .map (response => Try(response.json.as[SearchResult])
+                          .toOption
+                          .getOrElse(SearchResult(Nil, "0")))
   }
 }
