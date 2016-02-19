@@ -1,0 +1,12 @@
+
+*.class
+
+.history/
+
+target/
+
+src_managed/
+project/project/target/
+project/target/
+
+.idea/
